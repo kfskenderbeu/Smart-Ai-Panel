@@ -10,14 +10,35 @@ here.**
 |---|---|---|
 | **Production** | licensed installations | [`releases/iptv-panel-<version>`](releases) |
 | **Trial** | bug testing, no licence needed | [`releases/iptv-panel-trial-<version>`](releases) |
+| **Web UI** (admin) | installed automatically by the panel | [`releases/web-admin-<version>.webpkg`](releases) |
+| **Web UI** (portal) | installed automatically by the panel | [`releases/web-portal-<version>.webpkg`](releases) |
 
 Every file is listed in [`SHA256SUMS`](SHA256SUMS).
+
+The two `.webpkg` files carry the interface (HTML/JS/CSS). The panel installs
+them by itself during an update, so they only need to be downloaded by hand if
+you are assembling an installation offline.
 
 ## Installing
 
 ```bash
 install -m 0755 iptv-panel /opt/iptv-panel/bin/iptv-panel
 systemctl restart iptv-panel
+```
+
+The panel's own update mechanism installs the web UI, so an existing
+installation only needs the binary:
+
+```bash
+iptv-panel --update-apply https://raw.githubusercontent.com/kfskenderbeu/Smart-Ai-Panel/main/updates.json
+```
+
+For a **fresh** installation, unpack the web UI next to the panel as well:
+
+```bash
+install -d /opt/iptv-panel/bin /opt/iptv-panel/web
+install -m 0755 iptv-panel /opt/iptv-panel/bin/iptv-panel
+iptv-panel --update-apply <manifest-url> --web-root /opt/iptv-panel/web
 ```
 
 The trial build is a separate file (`iptv-panel-trial`) so it can never be
@@ -39,6 +60,11 @@ install -m 0755 iptv-panel-trial /opt/iptv-panel/bin/iptv-panel-trial
 Then open *Settings → License → ⬆️ Software Updates* and press
 **Check for updates** → **Update now**. The panel restarts itself on the new
 build; *Roll back* restores the previous one.
+
+An update installs the binary **and** the interface that belongs to it
+(HTML/JS/CSS), so the panel never ends up with a new backend and an old UI. If a
+panel was updated before the interface was shipped this way, the update card
+offers **🩹 Sync web UI** to install the matching files.
 
 ## Why downloading is safe
 
