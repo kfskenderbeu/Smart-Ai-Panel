@@ -19,7 +19,41 @@ The two `.webpkg` files carry the interface (HTML/JS/CSS). The panel installs
 them by itself during an update, so they only need to be downloaded by hand if
 you are assembling an installation offline.
 
-## Installing
+## Installing on a new server
+
+One command, straight from this repository:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kfskenderbeu/Smart-Ai-Panel/main/install.sh | sudo bash
+```
+
+It installs the dependencies (`curl`, `ca-certificates`, `ffmpeg`, `python3`,
+`sqlite3`), creates the `iptvpanel` user and `/opt/iptv-panel/{bin,config,data,logs,web}`,
+downloads the binary and checks it against the SHA-256 pinned in the script,
+installs the web UI from the signed manifest (the panel verifies the Ed25519
+signature and every file checksum itself), prints the admin password and starts
+the systemd service.
+
+The first run prints this server's **HWID** and stops, because a production
+licence is bound to it. Send the HWID to the vendor, then run it again with the
+key:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kfskenderbeu/Smart-Ai-Panel/main/install.sh \
+  | sudo bash -s -- --license '<KEY>'
+```
+
+**Trial** (no licence, ends on its built-in date):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kfskenderbeu/Smart-Ai-Panel/main/install.sh \
+  | sudo bash -s -- --trial
+```
+
+Running the same command again on an existing installation updates it in place
+and keeps the configuration, the database and the licence.
+
+### Manual install
 
 ```bash
 install -m 0755 iptv-panel /opt/iptv-panel/bin/iptv-panel
