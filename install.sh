@@ -29,9 +29,9 @@
 set -euo pipefail
 
 # ── release this script installs (rewritten on every release) ──────────────
-VERSION_DEFAULT="2.4.6"
-SHA_PROD_DEFAULT="af5f7cb5e191e8e1a079bb77e89a57319778ff7be505ce25c799899a697688ce"
-SHA_TRIAL_DEFAULT="743a95b324a29eba2c3c526b27103360cda165c7b43314d9e57a4d009684efe2"
+VERSION_DEFAULT="2.4.7"
+SHA_PROD_DEFAULT="41a59992724abc82add90668cd7c3a08c0d9c7811aa8d01ac94ff77437346fa7"
+SHA_TRIAL_DEFAULT="fb8216b44dfbb5651df338e3ef922fcb0620008455f60dd8f44f408ab30bb848"
 
 REPO="kfskenderbeu/Smart-Ai-Panel"
 RAW="https://raw.githubusercontent.com/${REPO}/main"
