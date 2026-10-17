@@ -29,9 +29,9 @@
 set -euo pipefail
 
 # ── release this script installs (rewritten on every release) ──────────────
-VERSION_DEFAULT="2.6.1"
-SHA_PROD_DEFAULT="1673459658d912267d52c0e7b17c661edb84f48ecf1c7f3557ccd1001c0e9fff"
-SHA_TRIAL_DEFAULT="697387a4744123bf27d48a8c36c5b94510b48a44d0a95cefb68d9cb52b89c1fe"
+VERSION_DEFAULT="2.6.2"
+SHA_PROD_DEFAULT="b0be4b1fd032ce424c06432a01c7c4f689489987fd26a1806c801aab52b54080"
+SHA_TRIAL_DEFAULT="e7813d6c1c7d9de37b96db85b25bc3722182db77aa33c9b627ae8f1509003e71"
 
 REPO="kfskenderbeu/Smart-Ai-Panel"
 RAW="https://raw.githubusercontent.com/${REPO}/main"
@@ -115,11 +115,14 @@ if [ "$DO_DEPS" = 1 ]; then
     if command -v apt-get >/dev/null 2>&1; then
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -qq
-        apt-get install -y -qq curl ca-certificates ffmpeg python3 sqlite3
+        apt-get install -y -qq curl ca-certificates ffmpeg python3 sqlite3 yt-dlp \
+            || apt-get install -y -qq curl ca-certificates ffmpeg python3 sqlite3
     elif command -v dnf >/dev/null 2>&1; then
-        dnf install -y curl ca-certificates ffmpeg python3 sqlite
+        dnf install -y curl ca-certificates ffmpeg python3 sqlite yt-dlp \
+            || dnf install -y curl ca-certificates ffmpeg python3 sqlite
     elif command -v yum >/dev/null 2>&1; then
         yum install -y curl ca-certificates ffmpeg python3 sqlite
+        yum install -y yt-dlp 2>/dev/null || true
     else
         warn "unknown package manager — make sure curl, ffmpeg and sqlite3 are installed"
     fi
