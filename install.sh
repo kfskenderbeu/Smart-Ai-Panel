@@ -29,9 +29,13 @@
 set -euo pipefail
 
 # ── release this script installs (rewritten on every release) ──────────────
-VERSION_DEFAULT="2.6.10"
-SHA_PROD_DEFAULT="64cb59d7d8b75fd43f7505e6515e07a28629692bfeb3d69e722785fc5d5bf098"
-SHA_TRIAL_DEFAULT="b832ef6cd0f385f36e76b75d256ea92b27d7635ebddb3ea0d5881140f0a2a6a1"
+VERSION_DEFAULT="2.6.11"
+SHA_PROD_DEFAULT="b154b33803ff31941acbbc8b57b6a194a20a802a17151280de0931228dc26332"
+SHA_TRIAL_DEFAULT="a0a433c20955b050b0b837f9615b89b4d90d889fcd55a266a34c8aeb4c317610"
+# The YouTube-login helper is a separate Python service the panel proxies to
+# on loopback. It is pinned by checksum like the binary, but it is optional:
+# if it is missing the panel still runs and only that one page is unusable.
+SHA_HELPER_DEFAULT="857b0c326377c5dd2056a6ebc7495d24588d247c513d882456ef3a167028062a"
 
 REPO="kfskenderbeu/Smart-Ai-Panel"
 RAW="https://raw.githubusercontent.com/${REPO}/main"
@@ -104,6 +108,16 @@ else
     TRACK_NAME="production"
 fi
 
+# The YouTube-login helper is optional: it only adds the in-panel sign-in
+# browser. Without it everything else works, so a failed download is a
+# warning and not a failed install.
+SHA_HELPER="${PANEL_SHA_HELPER:-$SHA_HELPER_DEFAULT}"
+HELPER_URL="$RAW/releases/yt_login_server.py"
+# The loopback port the panel and the helper use to talk to each other. It
+# has to be the same number on both sides, so it is written into both units.
+YTLOGIN_PORT="${IPTV_YTLOGIN_PORT:-8788}"
+PYTHON_BIN="$(command -v python3 || true)"
+
 echo "IPTV Panel installer"
 echo "  track   : $TRACK_NAME"
 echo "  version : $VERSION"
@@ -154,6 +168,31 @@ REPORTED="$("$DIR/bin/$BIN" --version 2>/dev/null | awk '{print $2}')"
 echo "  binary reports: $REPORTED"
 if [ "$REPORTED" != "$VERSION" ]; then
     warn "the script pins $VERSION but the binary reports $REPORTED"
+fi
+
+# ── 3b. the YouTube-login helper ───────────────────────────────────────────
+# The panel proxies /ytlogin/* to a small Python service on loopback. Without
+# it the panel still runs, but the "YouTube Login" page answers "connection
+# refused", which looks like a broken panel rather than a missing optional
+# service. The helper needs no network to listen and imports its browser
+# driver lazily, so it is safe to install even where no browser is present.
+HELPER_INSTALLED=0
+if [ -n "$SHA_HELPER" ] && command -v python3 >/dev/null 2>&1; then
+    install -d -o "$SVC_USER" -g "$SVC_USER" "$DIR/tools"
+    if curl -fsSL -o "$DIR/tools/yt_login_server.py.tmp" "$HELPER_URL" 2>/dev/null &&
+       echo "$SHA_HELPER  $DIR/tools/yt_login_server.py.tmp" | sha256sum -c - >/dev/null 2>&1; then
+        install -m 0755 -o "$SVC_USER" -g "$SVC_USER" \
+            "$DIR/tools/yt_login_server.py.tmp" "$DIR/tools/yt_login_server.py"
+        rm -f "$DIR/tools/yt_login_server.py.tmp"
+        HELPER_INSTALLED=1
+        echo "  helper  : yt_login_server.py installed"
+    else
+        rm -f "$DIR/tools/yt_login_server.py.tmp"
+        warn "the YouTube-login helper could not be installed (download or checksum failed)"
+        warn "  the panel works without it; only the 'YouTube Login' page needs it"
+    fi
+else
+    warn "skipping the YouTube-login helper (no python3, or the release pins none)"
 fi
 
 # ── 4. web UI, from the signed manifest ───────────────────────────────────
@@ -272,6 +311,9 @@ User=$SVC_USER
 Group=$SVC_USER
 WorkingDirectory=$DIR
 ExecStart=$DIR/bin/$BIN -c $DIR/config/config.json
+# Both sides of the YouTube-login proxy read this port; keeping it in one
+# place stops the panel and the helper from drifting apart.
+Environment=IPTV_YTLOGIN_PORT=$YTLOGIN_PORT
 # The panel replaces its own binary and exits 0 to activate it; this is what
 # brings it back on the new build.
 Restart=always
@@ -287,6 +329,63 @@ UNIT
     systemctl enable iptv-panel >/dev/null 2>&1 || true
     systemctl restart iptv-panel
     sleep 4
+
+    # ── 7b. the YouTube-login helper service ──────────────────────────────
+    # The panel proxies /ytlogin/* to this service on loopback. It is
+    # optional: if it cannot be installed the panel is still complete, so
+    # this never fails the install.
+    if [ "$HELPER_INSTALLED" = 1 ]; then
+        say "Installing the YouTube-login helper service"
+        # Chromium refuses to start without a writable HOME (it resolves its
+        # crashpad database under it and dies on SIGTRAP otherwise).
+        SVC_HOME="$(getent passwd "$SVC_USER" | cut -d: -f6)"
+        [ -n "$SVC_HOME" ] || SVC_HOME="$DIR"
+        install -d -o "$SVC_USER" -g "$SVC_USER" "$SVC_HOME"
+        # Playwright's browsers may live outside the home directory on this
+        # layout, so the helper is told where to look. When they are not
+        # there, Playwright's own default is used instead.
+        PW_ENV=""
+        if [ -d "$DIR/bin/playwright" ]; then
+            PW_ENV="Environment=PLAYWRIGHT_BROWSERS_PATH=$DIR/bin/playwright"
+        fi
+        cat > /etc/systemd/system/iptv-ytlogin.service <<UNIT
+[Unit]
+Description=IPTV Panel YouTube login browser helper (loopback only)
+After=network.target
+
+[Service]
+Type=simple
+User=$SVC_USER
+Group=$SVC_USER
+WorkingDirectory=$DIR
+Environment=HOME=$SVC_HOME
+Environment=IPTV_YTLOGIN_PORT=$YTLOGIN_PORT
+Environment=PYTHONUNBUFFERED=1
+$PW_ENV
+ExecStart=${PYTHON_BIN:-/usr/bin/python3} $DIR/tools/yt_login_server.py
+Restart=on-failure
+RestartSec=5
+
+# Hardening: the helper only binds loopback and writes data/yt-* files.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=no
+ReadWritePaths=$DIR/data
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+        systemctl daemon-reload
+        systemctl enable iptv-ytlogin >/dev/null 2>&1 || true
+        systemctl restart iptv-ytlogin >/dev/null 2>&1 || true
+        sleep 2
+        if systemctl is-active --quiet iptv-ytlogin; then
+            echo "  helper service : active (127.0.0.1:$YTLOGIN_PORT)"
+        else
+            warn "the iptv-ytlogin service did not start; the 'YouTube Login' page will say so"
+        fi
+    fi
 
     say "Result"
     echo "  service : $(systemctl is-active iptv-panel)"
