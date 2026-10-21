@@ -29,9 +29,9 @@
 set -euo pipefail
 
 # ── release this script installs (rewritten on every release) ──────────────
-VERSION_DEFAULT="2.6.11"
-SHA_PROD_DEFAULT="b154b33803ff31941acbbc8b57b6a194a20a802a17151280de0931228dc26332"
-SHA_TRIAL_DEFAULT="a0a433c20955b050b0b837f9615b89b4d90d889fcd55a266a34c8aeb4c317610"
+VERSION_DEFAULT="2.6.12"
+SHA_PROD_DEFAULT="1c5ccb6e245938954c375754c0d8b83670ad1c9723f3e84ccb524a0140ac1f43"
+SHA_TRIAL_DEFAULT="916bb4b2324e6cc8f0aaf12710ba042f43aacf2ce4b6aee4ab8c0f27083ebf2f"
 # The YouTube-login helper is a separate Python service the panel proxies to
 # on loopback. It is pinned by checksum like the binary, but it is optional:
 # if it is missing the panel still runs and only that one page is unusable.
@@ -113,6 +113,7 @@ fi
 # warning and not a failed install.
 SHA_HELPER="${PANEL_SHA_HELPER:-$SHA_HELPER_DEFAULT}"
 HELPER_URL="$RAW/releases/yt_login_server.py"
+HELPER_UNIT_URL="$RAW/releases/iptv-ytlogin.service.in"
 # The loopback port the panel and the helper use to talk to each other. It
 # has to be the same number on both sides, so it is written into both units.
 YTLOGIN_PORT="${IPTV_YTLOGIN_PORT:-8788}"
@@ -176,7 +177,11 @@ fi
 # refused", which looks like a broken panel rather than a missing optional
 # service. The helper needs no network to listen and imports its browser
 # driver lazily, so it is safe to install even where no browser is present.
+#
+# The helper and its systemd unit are one thing: without the unit the helper
+# is useless, so both are optional together.
 HELPER_INSTALLED=0
+HELPER_TMPL=""
 if [ -n "$SHA_HELPER" ] && command -v python3 >/dev/null 2>&1; then
     install -d -o "$SVC_USER" -g "$SVC_USER" "$DIR/tools"
     if curl -fsSL -o "$DIR/tools/yt_login_server.py.tmp" "$HELPER_URL" 2>/dev/null &&
@@ -184,6 +189,14 @@ if [ -n "$SHA_HELPER" ] && command -v python3 >/dev/null 2>&1; then
         install -m 0755 -o "$SVC_USER" -g "$SVC_USER" \
             "$DIR/tools/yt_login_server.py.tmp" "$DIR/tools/yt_login_server.py"
         rm -f "$DIR/tools/yt_login_server.py.tmp"
+        # The unit template travels with the helper, so a manual install and
+        # an automatic one cannot drift apart.
+        if curl -fsSL -o "$DIR/tools/iptv-ytlogin.service.in.tmp" "$HELPER_UNIT_URL" 2>/dev/null; then
+            install -m 0644 -o "$SVC_USER" -g "$SVC_USER" \
+                "$DIR/tools/iptv-ytlogin.service.in.tmp" "$DIR/tools/iptv-ytlogin.service.in"
+            rm -f "$DIR/tools/iptv-ytlogin.service.in.tmp"
+            HELPER_TMPL="$DIR/tools/iptv-ytlogin.service.in"
+        fi
         HELPER_INSTALLED=1
         echo "  helper  : yt_login_server.py installed"
     else
@@ -348,34 +361,21 @@ UNIT
         if [ -d "$DIR/bin/playwright" ]; then
             PW_ENV="Environment=PLAYWRIGHT_BROWSERS_PATH=$DIR/bin/playwright"
         fi
-        cat > /etc/systemd/system/iptv-ytlogin.service <<UNIT
-[Unit]
-Description=IPTV Panel YouTube login browser helper (loopback only)
-After=network.target
-
-[Service]
-Type=simple
-User=$SVC_USER
-Group=$SVC_USER
-WorkingDirectory=$DIR
-Environment=HOME=$SVC_HOME
-Environment=IPTV_YTLOGIN_PORT=$YTLOGIN_PORT
-Environment=PYTHONUNBUFFERED=1
-$PW_ENV
-ExecStart=${PYTHON_BIN:-/usr/bin/python3} $DIR/tools/yt_login_server.py
-Restart=on-failure
-RestartSec=5
-
-# Hardening: the helper only binds loopback and writes data/yt-* files.
-NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=full
-ProtectHome=no
-ReadWritePaths=$DIR/data
-
-[Install]
-WantedBy=multi-user.target
-UNIT
+        # One template, rendered here and published with the release, so a
+        # manual install and an automatic one cannot drift apart.
+        if [ -n "$HELPER_TMPL" ]; then
+            sed -e "s|@USER@|$SVC_USER|g" \
+                -e "s|@DIR@|$DIR|g" \
+                -e "s|@HOME@|$SVC_HOME|g" \
+                -e "s|@PORT@|$YTLOGIN_PORT|g" \
+                -e "s|@PYTHON@|${PYTHON_BIN:-/usr/bin/python3}|g" \
+                -e "s|@PLAYWRIGHT@|$PW_ENV|g" \
+                "$HELPER_TMPL" > /etc/systemd/system/iptv-ytlogin.service
+            chmod 0644 /etc/systemd/system/iptv-ytlogin.service
+        else
+            warn "the ytlogin unit template is missing, so the service is not installed"
+            warn "  the helper is installed but nothing will start it"
+        fi
         systemctl daemon-reload
         systemctl enable iptv-ytlogin >/dev/null 2>&1 || true
         systemctl restart iptv-ytlogin >/dev/null 2>&1 || true

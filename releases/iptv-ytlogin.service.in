@@ -1,0 +1,26 @@
+[Unit]
+Description=IPTV Panel YouTube login browser helper (loopback only)
+After=network.target
+
+[Service]
+Type=simple
+User=@USER@
+Group=@USER@
+WorkingDirectory=@DIR@
+Environment=HOME=@HOME@
+Environment=IPTV_YTLOGIN_PORT=@PORT@
+Environment=PYTHONUNBUFFERED=1
+@PLAYWRIGHT@
+ExecStart=@PYTHON@ @DIR@/tools/yt_login_server.py
+Restart=on-failure
+RestartSec=5
+
+# Hardening: the helper only binds loopback and writes data/yt-* files.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=no
+ReadWritePaths=@DIR@/data
+
+[Install]
+WantedBy=multi-user.target
