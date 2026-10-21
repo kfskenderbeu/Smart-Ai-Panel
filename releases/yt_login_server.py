@@ -50,6 +50,16 @@ IDLE_S = int(os.environ.get("IPTV_YTLOGIN_IDLE_S", "600"))
 WARM_H = float(os.environ.get("IPTV_YTLOGIN_WARM_HOURS", "12"))
 VIEW_W, VIEW_H = 1280, 800
 
+# Playwright looks for its browsers under $HOME/.cache/ms-playwright, but a
+# panel install keeps them under bin/playwright so a data backup never
+# sweeps them up. Point Playwright there when it is there, unless the
+# operator said otherwise -- otherwise the browser is "not installed" on a
+# machine that has it.
+if not os.environ.get("PLAYWRIGHT_BROWSERS_PATH"):
+    _bundled_browsers = ROOT / "bin" / "playwright"
+    if _bundled_browsers.is_dir():
+        os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(_bundled_browsers)
+
 SIGNIN_URL = ("https://accounts.google.com/ServiceLogin?service=youtube"
               "&continue=https%3A%2F%2Fwww.youtube.com%2F")
 HOME_URL = "https://www.youtube.com/?hl=en&persist_hl=1"

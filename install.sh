@@ -29,13 +29,13 @@
 set -euo pipefail
 
 # ── release this script installs (rewritten on every release) ──────────────
-VERSION_DEFAULT="2.6.13"
-SHA_PROD_DEFAULT="973660e4a43b2815a32363f7524509cefc2df15c4724bc5348d1d91acc0d9cdc"
-SHA_TRIAL_DEFAULT="83dd7ca87f2b5917945799b58d7390120cf77111d94e0fdf1cc9891ced91876c"
+VERSION_DEFAULT="2.6.14"
+SHA_PROD_DEFAULT="52b57f01b654582751c9366bc602e9ebabe9d635e1f3f456dc4a0025f75b0f6e"
+SHA_TRIAL_DEFAULT="af05170238b982150b870faafd43ed5df729e83c32025c01a52bec370ebf586f"
 # The YouTube-login helper is a separate Python service the panel proxies to
 # on loopback. It is pinned by checksum like the binary, but it is optional:
 # if it is missing the panel still runs and only that one page is unusable.
-SHA_HELPER_DEFAULT="f8ee347b39baf992ba73b9886bf6b7edec345adbca90c9f114fa5552855c8677"
+SHA_HELPER_DEFAULT="0ff7f88e2c4a5870e816eb05d7a3aff59accf883e81cd0745d84547ad891f99d"
 
 REPO="kfskenderbeu/Smart-Ai-Panel"
 RAW="https://raw.githubusercontent.com/${REPO}/main"
@@ -376,7 +376,8 @@ UNIT
                 -e "s|@PORT@|$YTLOGIN_PORT|g" \
                 -e "s|@PYTHON@|${PYTHON_BIN:-/usr/bin/python3}|g" \
                 -e "s|@PLAYWRIGHT@|$PW_ENV|g" \
-                "$HELPER_TMPL" > /etc/systemd/system/iptv-ytlogin.service
+                "$HELPER_TMPL" | sed -e '/^[[:space:]]*$/d' \
+                > /etc/systemd/system/iptv-ytlogin.service
             chmod 0644 /etc/systemd/system/iptv-ytlogin.service
         else
             warn "the ytlogin unit template is missing, so the service is not installed"
