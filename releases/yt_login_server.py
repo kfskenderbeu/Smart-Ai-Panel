@@ -149,6 +149,14 @@ def ensure_home():
     raise RuntimeError("no writable HOME for Chromium")
 
 
+class MissingDependency(RuntimeError):
+    """Something the browser needs is not installed on this host.
+
+    Separate from a plain error because the operator's next step is a
+    package install, not a log read: Playwright, Chromium or Xvfb.
+    """
+
+
 class BrowserSession:
     """One Chromium-under-Xvfb at a time, plus the exported cookie file."""
 
@@ -170,10 +178,16 @@ class BrowserSession:
             sock = Path(f"/tmp/.X11-unix/X{num}")
             if lock.exists() or sock.exists():
                 continue
-            proc = subprocess.Popen(
-                ["Xvfb", f":{num}", "-screen", "0", f"{VIEW_W}x{VIEW_H}x24",
-                 "-nolisten", "tcp"],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            try:
+                proc = subprocess.Popen(
+                    ["Xvfb", f":{num}", "-screen", "0", f"{VIEW_W}x{VIEW_H}x24",
+                     "-nolisten", "tcp"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except FileNotFoundError as e:
+                raise MissingDependency(
+                    "Xvfb is not installed on this server -- "
+                    "apt-get install -y xvfb") from e
+
             await asyncio.sleep(0.7)
             if proc.poll() is None:
                 self.xvfb, self.display = proc, f":{num}"
@@ -193,7 +207,13 @@ class BrowserSession:
             await self._start_xvfb()
         os.environ["DISPLAY"] = self.display
         if self.pw is None:
-            from playwright.async_api import async_playwright
+            try:
+                from playwright.async_api import async_playwright
+            except ImportError as e:
+                raise MissingDependency(
+                    "Playwright is not installed on this server -- "
+                    "pip install playwright && python3 -m playwright install chromium"
+                ) from e
             self.pw = await async_playwright().start()
         PROFILE_DIR.mkdir(parents=True, exist_ok=True)
         args = [
@@ -202,16 +222,26 @@ class BrowserSession:
             "--disable-blink-features=AutomationControlled",
             f"--window-size={VIEW_W},{VIEW_H}",
         ]
-        self.ctx = await self.pw.chromium.launch_persistent_context(
-            str(PROFILE_DIR),
-            headless=False,
-            args=args,
-            viewport={"width": VIEW_W, "height": VIEW_H},
-            device_scale_factor=1,
-            locale="en-US",
-            timezone_id="Europe/Tirane",
-            ignore_https_errors=False,
-        )
+        try:
+            self.ctx = await self.pw.chromium.launch_persistent_context(
+                str(PROFILE_DIR),
+                headless=False,
+                args=args,
+                viewport={"width": VIEW_W, "height": VIEW_H},
+                device_scale_factor=1,
+                locale="en-US",
+                timezone_id="Europe/Tirane",
+                ignore_https_errors=False,
+            )
+        except Exception as e:
+            # Playwright says "Executable doesn't exist at ..." when the
+            # browser was never downloaded. That is a package install, not a
+            # crash, and the two deserve different answers.
+            if "Executable doesn't exist" in str(e):
+                raise MissingDependency(
+                    "Chromium is not installed for Playwright -- "
+                    "python3 -m playwright install chromium") from e
+            raise
         page = self.ctx.pages[0] if self.ctx.pages else await self.ctx.new_page()
         try:
             await page.goto(url, wait_until="domcontentloaded", timeout=60000)
@@ -232,6 +262,10 @@ class BrowserSession:
                 return {"ok": True, "already_running": True}
             try:
                 await self._launch(url)
+            except MissingDependency:
+                # A missing package is not a launch failure worth retrying:
+                # the operator has to install it first.
+                raise
             except Exception as e:
                 orig = e
                 # A crashed Chromium leaves SingletonLock behind; nobody is
@@ -582,6 +616,9 @@ async def handle_client(reader, writer, sess):
             code, obj = await route(sess, method, seg, query, body)
     except ValueError as e:
         code, obj = 400, {"error": str(e)}
+    except MissingDependency as e:
+        # 503: the server is fine, a package it needs is not installed.
+        code, obj = 503, {"error": str(e)}
     except Exception as e:  # noqa: BLE001 -- report, keep serving
         log(f"error in /{seg}: {e!r}")
         code, obj = 500, {"error": str(e)[:300]}

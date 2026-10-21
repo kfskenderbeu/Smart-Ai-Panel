@@ -29,13 +29,13 @@
 set -euo pipefail
 
 # ── release this script installs (rewritten on every release) ──────────────
-VERSION_DEFAULT="2.6.12"
-SHA_PROD_DEFAULT="1c5ccb6e245938954c375754c0d8b83670ad1c9723f3e84ccb524a0140ac1f43"
-SHA_TRIAL_DEFAULT="916bb4b2324e6cc8f0aaf12710ba042f43aacf2ce4b6aee4ab8c0f27083ebf2f"
+VERSION_DEFAULT="2.6.13"
+SHA_PROD_DEFAULT="973660e4a43b2815a32363f7524509cefc2df15c4724bc5348d1d91acc0d9cdc"
+SHA_TRIAL_DEFAULT="83dd7ca87f2b5917945799b58d7390120cf77111d94e0fdf1cc9891ced91876c"
 # The YouTube-login helper is a separate Python service the panel proxies to
 # on loopback. It is pinned by checksum like the binary, but it is optional:
 # if it is missing the panel still runs and only that one page is unusable.
-SHA_HELPER_DEFAULT="857b0c326377c5dd2056a6ebc7495d24588d247c513d882456ef3a167028062a"
+SHA_HELPER_DEFAULT="f8ee347b39baf992ba73b9886bf6b7edec345adbca90c9f114fa5552855c8677"
 
 REPO="kfskenderbeu/Smart-Ai-Panel"
 RAW="https://raw.githubusercontent.com/${REPO}/main"
@@ -49,6 +49,7 @@ LICENSE_KEY="${LICENSE_KEY:-}"
 DO_DEPS=1
 DO_SERVICE=1
 DO_WEB=1
+DO_BROWSER=1
 MANIFEST_OVERRIDE=""
 
 usage() {
@@ -65,6 +66,7 @@ IPTV Panel installer
   --manifest URL       use a different update manifest (default: this repo's)
   --no-web             skip the web UI (binary only)
   --no-deps            skip the dependency install
+  --no-browser         skip Playwright + Chromium (the YouTube-login browser)
   --no-service         do not install/start the systemd unit
   -h, --help           this help
 
@@ -83,6 +85,7 @@ while [ $# -gt 0 ]; do
         --manifest)   MANIFEST_OVERRIDE="${2:-}"; shift 2 ;;
         --no-web)     DO_WEB=0; shift ;;
         --no-deps)    DO_DEPS=0; shift ;;
+        --no-browser) DO_BROWSER=0; shift ;;
         --no-service) DO_SERVICE=0; shift ;;
         -h|--help)    usage 0 ;;
         *) echo "unknown option: $1" >&2; usage 1 ;;
@@ -130,13 +133,13 @@ if [ "$DO_DEPS" = 1 ]; then
     if command -v apt-get >/dev/null 2>&1; then
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -qq
-        apt-get install -y -qq curl ca-certificates ffmpeg python3 sqlite3 yt-dlp \
-            || apt-get install -y -qq curl ca-certificates ffmpeg python3 sqlite3
+        apt-get install -y -qq curl ca-certificates ffmpeg python3 sqlite3 yt-dlp xvfb \
+            || apt-get install -y -qq curl ca-certificates ffmpeg python3 sqlite3 xvfb
     elif command -v dnf >/dev/null 2>&1; then
-        dnf install -y curl ca-certificates ffmpeg python3 sqlite yt-dlp \
-            || dnf install -y curl ca-certificates ffmpeg python3 sqlite
+        dnf install -y curl ca-certificates ffmpeg python3 sqlite yt-dlp xvfb \
+            || dnf install -y curl ca-certificates ffmpeg python3 sqlite xvfb
     elif command -v yum >/dev/null 2>&1; then
-        yum install -y curl ca-certificates ffmpeg python3 sqlite
+        yum install -y curl ca-certificates ffmpeg python3 sqlite xvfb
         yum install -y yt-dlp 2>/dev/null || true
     else
         warn "unknown package manager — make sure curl, ffmpeg and sqlite3 are installed"
@@ -145,6 +148,9 @@ fi
 command -v curl >/dev/null 2>&1 || die "curl is required"
 if ! command -v ffmpeg >/dev/null 2>&1; then
     warn "ffmpeg was not found on PATH; streaming that needs transcoding will not work"
+fi
+if ! command -v Xvfb >/dev/null 2>&1; then
+    warn "Xvfb was not found; the 'YouTube Login' browser cannot open without it"
 fi
 
 # ── 2. user + directories ─────────────────────────────────────────────────
@@ -375,6 +381,28 @@ UNIT
         else
             warn "the ytlogin unit template is missing, so the service is not installed"
             warn "  the helper is installed but nothing will start it"
+        fi
+
+        # The browser itself. The helper starts and answers without it, but
+        # "Start browser" cannot: Playwright drives Chromium, and Chromium
+        # needs an X server to run on. Both are installed here so the feature
+        # works on a fresh machine; a failure is a warning, not a dead
+        # install.
+        if [ "$DO_BROWSER" = 1 ]; then
+            say "Installing the browser for the YouTube-login helper"
+            install -d -o "$SVC_USER" -g "$SVC_USER" "$DIR/bin/playwright"
+            if ! python3 -m pip install --quiet --break-system-packages playwright 2>/dev/null; then
+                python3 -m pip install --quiet playwright 2>/dev/null \
+                    || warn "playwright could not be installed"
+            fi
+            if ! PLAYWRIGHT_BROWSERS_PATH="$DIR/bin/playwright" \
+                 python3 -m playwright install chromium 2>/dev/null; then
+                warn "Chromium could not be downloaded for Playwright"
+                warn "  the browser will not open until it is:"
+                warn "  PLAYWRIGHT_BROWSERS_PATH=$DIR/bin/playwright python3 -m playwright install chromium"
+            else
+                chown -R "$SVC_USER:$SVC_USER" "$DIR/bin/playwright" 2>/dev/null || true
+            fi
         fi
         systemctl daemon-reload
         systemctl enable iptv-ytlogin >/dev/null 2>&1 || true
