@@ -19,6 +19,11 @@ Te **Movies → Edit** ose **Series → Edit** dhe (për një episod të vetëm)
 | `hd` | Video → H.264 720p 2.2 Mbps + AAC | Lidhje e dobët |
 | `sd` | Video → H.264 480p 900 kbps + AAC | Kursim maksimal |
 
+> ⚠️ **10-bit**: libraritë e reja x264 e ruajnë thellësinë e burimit, pra një
+> HEVC Main 10 rikodohej si **H.264 High 10** — po aq i palexueshëm sa HEVC.
+> Rikodimi tani detyron gjithmonë `yuv420p` (8-bit, High ≤4.1). `auto` e
+> trajton edhe H.264 10-bit si "nuk kopjohet".
+
 > ⚠️ **HEVC (H.265)**: MAG, SmartSTB dhe shumica e Smart TV-ve nuk e dekodojnë.
 > Me `pass`/`aac` video kopjohet ashtu si është dhe pajisja mbyll lidhjen pas
 > ~2 MB pa asnjë gabim të dukshëm. `auto` e rikodon në H.264 automatikisht;
