@@ -14,7 +14,7 @@ Te **Movies → Edit** ose **Series → Edit** dhe (për një episod të vetëm)
 |---|---|---|
 | **`auto`** | Zbulon kodekun (0.2 s, cache 1 h): H.264/MPEG-2 → **copy + AAC**; HEVC/AV1/VP9 → **H.264 1080p + AAC** | **Zgjedhja e rekomanduar** — mbulon të dyja rastet pa menduar |
 | `pass` | Stream copy, asnjë transkodim | Burimi është tashmë H.264 + AAC dhe s'ka DTS |
-| `aac` | Video **copy** (0% CPU), audio → **AAC 192k**, PGS hiqet | DTS/E-AC3 mbi video **H.264** |
+| `aac` | Audio → **AAC 192k**, PGS hiqet; video **copy** kur është 8-bit H.264, përndryshe rikodohet | DTS/E-AC3 — e sigurt edhe mbi HEVC |
 | `fhd` | Video → H.264 1080p 4.5 Mbps + AAC (pa upscale) | Bitrate shumë i lartë për rrjetin |
 | `hd` | Video → H.264 720p 2.2 Mbps + AAC | Lidhje e dobët |
 | `sd` | Video → H.264 480p 900 kbps + AAC | Kursim maksimal |
