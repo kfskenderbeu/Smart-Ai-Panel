@@ -1,0 +1,58 @@
+# /opt/iptv-panel/etc/mirror.conf
+# Shared config for iptv-mirror-sync (runs on the ACTIVE main)
+# and iptv-failover-watch (runs on the MIRROR/standby).
+# Copy the blocks you need on each machine.
+
+# ── common ──────────────────────────────────────────────────────────────────
+IPTV_PANEL_DIR=/opt/iptv-panel
+
+# ── mirror-sync side (runs on the ACTIVE main) ─────────────────────────────
+# SSH destination of the standby server.
+MIRROR_HOST=37.59.185.48
+MIRROR_SSH_PORT=22
+MIRROR_SSH_USER=iptvpanel
+MIRROR_SSH_KEY=/root/.ssh/id_ed25519
+MIRROR_REMOTE_DIR=/opt/iptv-panel/data/mirror-in
+MIRROR_SYNC_INTERVAL=15     # seconds between snapshots
+MIRROR_KEEP=6               # local snapshot rotation
+# Optional: a file listing extra paths (relative to panel dir, one per line)
+# to ship alongside the DB (e.g. web/ or certs).
+MIRROR_EXTRA_FILES=
+
+# ── failover-watch side (runs on the MIRROR) ───────────────────────────────
+# Health URL of the active main (no TLS on 8080 per house rule; 18099 metrics).
+HEALTH_URL=http://37.59.185.61:18099/health
+HEALTH_INTERVAL=10
+HEALTH_FAILS=3
+
+# manual | auto
+MIRROR_FAILOVER_MODE=manual
+
+# Start the local iptv-panel service on take-over (cold standby → hot standby)
+MIRROR_TAKEOVER_START_PANEL=0
+
+# Discord/Telegram alert webhook (optional)
+# Discord: https://discord.com/api/webhooks/<id>/<token>
+# Telegram: https://api.telegram.org/bot<TOKEN>/sendMessage?chat_id=<id>&text=%s
+ALERT_WEBHOOK=
+
+# ── auto-failover provider (only used when MIRROR_FAILOVER_MODE=auto) ──────
+# provider = cloudflare | vip | webhook | (empty)
+FAILOVER_PROVIDER=
+
+# cloudflare:
+#   A record gets pointed at MIRROR_MY_IP. Create an API token with
+#   Zone > DNS > Edit for the specific zone/record.
+CF_API_TOKEN=
+CF_ZONE_ID=
+CF_RECORD_ID=
+CF_RECORD=panel.example.com
+MIRROR_MY_IP=37.59.185.48
+
+# vip (same L2/datacenter only):
+#   Must be "<ip>/<prefix>", e.g. 37.59.185.90/32.
+VIP=
+VIP_IF=eth0
+
+# webhook (custom endpoint that receives the take-over event):
+FAILOVER_WEBHOOK=

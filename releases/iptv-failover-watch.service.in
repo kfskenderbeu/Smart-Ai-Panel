@@ -1,0 +1,14 @@
+[Unit]
+Description=IPTV Panel failover heartbeat watcher (runs on the mirror/standby)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=@PATH_SCRIPT@
+Environment=IPTV_PANEL_DIR=@DIR@
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
