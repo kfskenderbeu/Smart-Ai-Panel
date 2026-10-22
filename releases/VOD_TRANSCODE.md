@@ -5,18 +5,24 @@ PGS** nuk hapen në SmartSTB, MAG ose Smart TV: dekoderi pranon vetëm MPEG-TS m
 audio që njeh. Paneli ofron dy zgjidhje, të zgjedhshme për çdo film, seri ose
 episod veç e veç.
 
-## 1. Live transcode (0% CPU video, vetëm audio)
+## 1. Live transcode
 
 Te **Movies → Edit** ose **Series → Edit** dhe (për një episod të vetëm)
 **Series → Episodes → Edit**, seksioni **⚙️ Transcoding & Playback**:
 
 | Profil | Çfarë bën | Kur ta zgjidhni |
 |---|---|---|
-| `pass` | Stream copy, asnjë transkodim | Burimi është tashmë H.264 + AAC |
-| **`aac`** | Video **copy** (0% CPU), audio → **AAC 192k**, PGS hiqet | **Rasti tipik:** DTS/E-AC3 që STB nuk e lexon |
-| `fhd` | Video → H.264 1080p 4.5 Mbps + AAC | Bitrate shumë i lartë për rrjetin |
+| **`auto`** | Zbulon kodekun (0.2 s, cache 1 h): H.264/MPEG-2 → **copy + AAC**; HEVC/AV1/VP9 → **H.264 1080p + AAC** | **Zgjedhja e rekomanduar** — mbulon të dyja rastet pa menduar |
+| `pass` | Stream copy, asnjë transkodim | Burimi është tashmë H.264 + AAC dhe s'ka DTS |
+| `aac` | Video **copy** (0% CPU), audio → **AAC 192k**, PGS hiqet | DTS/E-AC3 mbi video **H.264** |
+| `fhd` | Video → H.264 1080p 4.5 Mbps + AAC (pa upscale) | Bitrate shumë i lartë për rrjetin |
 | `hd` | Video → H.264 720p 2.2 Mbps + AAC | Lidhje e dobët |
 | `sd` | Video → H.264 480p 900 kbps + AAC | Kursim maksimal |
+
+> ⚠️ **HEVC (H.265)**: MAG, SmartSTB dhe shumica e Smart TV-ve nuk e dekodojnë.
+> Me `pass`/`aac` video kopjohet ashtu si është dhe pajisja mbyll lidhjen pas
+> ~2 MB pa asnjë gabim të dukshëm. `auto` e rikodon në H.264 automatikisht;
+> `fhd`/`hd`/`sd` e rikodojnë gjithmonë.
 
 - **Seria** vendos profilin default për të gjitha episodet.
 - **Episodi** e anashkalon serinë kur ka vlerë të vet (opsioni *— Inherit from
@@ -49,8 +55,8 @@ POST /api/v1/series/<id>/convert-season          # {"season": 1} ose {"season": 
 PUT  /api/v1/episodes/<id>                       # {"transcode_profile":"aac","use_ffmpeg":1}
 ```
 
-`transcode_profile` pranon `""` (trashëgo serinë), `pass`, `aac`, `fhd`, `hd`,
-`sd`; çdo vlerë tjetër kthehet `400`.
+`transcode_profile` pranon `""` (trashëgo serinë), `auto`, `pass`, `aac`, `fhd`,
+`hd`, `sd`; çdo vlerë tjetër kthehet `400`.
 
 ## Multi-server (LB)
 
