@@ -34,6 +34,30 @@ sudo scripts/setup_mirror.sh --standby <IP-E-E-MAIN-IT> --mode auto --provider v
 sudo scripts/setup_mirror.sh --standby <IP-E-E-MAIN-IT> --mode auto --provider cloudflare
 ```
 
+### 3. Çelësi i përbashkët: `jwt_secret` (i detyrueshëm)
+Që nga 2.6.38, cilësimet sekrete (çelësat e AI-së, Stripe/PayPal,
+OpenSubtitles), çelësat DRM dhe sesionet enkriptohen me `jwt_secret` nga
+`config/config.json`. Sinku dërgon vetëm databazën, **jo** config-un. Një
+panel pa `jwt_secret` krijon vetë një të rastësishëm, kështu që një pasqyrë e
+re ka gjithmonë çelës tjetër. Pas failover-it ajo nuk i lexon dot këto të
+dhëna: AI dhe pagesat ndalen, kanalet DRM nuk luajnë dhe të gjithë hyjnë sërish.
+
+Kopjojeni config-un e main-it te pasqyra një herë, pas hapit 1:
+```bash
+scp /opt/iptv-panel/config/config.json iptvpanel@<IP-E-E-PASQYRËS>:/opt/iptv-panel/config/config.json
+ssh iptvpanel@<IP-E-E-PASQYRËS> chmod 600 /opt/iptv-panel/config/config.json
+```
+Nëse pasqyra ka host ose porta të tjera, ndryshoni vetëm ato fusha dhe lëreni
+`jwt_secret` siç është.
+
+`iptv-mirror-sync` e kontrollon vetë: në nisje dhe pastaj çdo ~10 minuta
+krahason hash-in e `jwt_secret` të të dy serverave (vetë çelësi nuk dërgohet
+asnjëherë). Te `journalctl -u iptv-mirror-sync` duhet të shihni
+`standby jwt_secret matches`. Në rast mospërputhjeje shfaqet një `WARNING`.
+
+> Mbani edhe një kopje të `config.json` jashtë serverit: pa `jwt_secret`
+> sekretet në databazë (dhe në çdo backup të saj) nuk rikuperohen dot.
+
 ## Modelet e failover-it
 
 ### `manual` (i thjeshtë, i rekomanduar pa eksperiencë me VIP)
@@ -81,3 +105,6 @@ FAILOVER_SEED_STATE=down sudo -E bash /usr/local/bin/iptv-failover-watch.sh
 - Alertet dërgohen me `allowed_mentions: {"parse": []}` (Discord).
 - Përveç `panel.db`, mund të dërgohen skedare shtesë (`MIRROR_EXTRA_FILES`):
   çelësa, certifikata, `web/`.
+- Kontrolli i `jwt_secret` krahason vetëm hash-e SHA-256, dhe vetë çelësi nuk
+  del kurrë nga main-i. Kopjimi i `config.json` mbetet hap manual i
+  administratorit.

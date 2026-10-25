@@ -35,7 +35,42 @@ mkdir -p "$snap_dir"
 snap="$snap_dir/latest.db"
 tmp="$snap_dir/.new.db"
 
+# The standby must run with the main's jwt_secret: since 2.6.38 the secret
+# settings (AI/payment keys), DRM keys and sessions are sealed with it, and
+# the database shipped below is unreadable in those parts under any other
+# key. A panel started without one makes up its own, so a fresh standby is
+# wrong by default. Only hashes are compared; the secret never leaves here.
+: "${MIRROR_SECRET_CHECK_EVERY:=40}"      # loops between checks (~10 min)
+config_rel="${MIRROR_CONFIG:-config/config.json}"
+secret_hash() {   # stdin: config.json -> sha256 of the jwt_secret value, or ""
+  sed -n 's/.*"jwt_secret"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1 \
+    | { read -r v; [ -n "$v" ] && printf '%s' "$v" | sha256sum | cut -d' ' -f1; }
+}
+check_secret() {
+  local mine theirs
+  mine=$(secret_hash < "$BASE/$config_rel" 2>/dev/null)
+  theirs=$(ssh -p "${MIRROR_SSH_PORT:-22}" -o BatchMode=yes -o ConnectTimeout=10 \
+             ${MIRROR_SSH_KEY:+-i "$MIRROR_SSH_KEY"} "$ssh_target" \
+             "cat '$BASE/$config_rel'" 2>/dev/null | secret_hash)
+  if [ -z "$mine" ]; then
+    echo "[$(date +'%F %T')] mirror-sync: WARNING no jwt_secret in $BASE/$config_rel" >&2
+  elif [ -z "$theirs" ]; then
+    echo "[$(date +'%F %T')] mirror-sync: WARNING cannot read the standby's $config_rel" \
+         "(jwt_secret not verified)" >&2
+  elif [ "$mine" != "$theirs" ]; then
+    echo "[$(date +'%F %T')] mirror-sync: WARNING the standby's jwt_secret differs from this" \
+         "server's -- after a failover it cannot decrypt the secret settings, DRM keys or" \
+         "sessions. Copy $config_rel to the standby (see docs/HA.md)." >&2
+  else
+    echo "[$(date +'%F %T')] mirror-sync: standby jwt_secret matches"
+  fi
+}
+loops=0
+
 while :; do
+  if [ $((loops % MIRROR_SECRET_CHECK_EVERY)) -eq 0 ]; then check_secret; fi
+  loops=$((loops + 1))
+
   if [ -f "$db_path" ]; then
     # Prune old WAL so the snapshot does not grow unbounded; harmless live.
     sqlite3 "$db_path" "PRAGMA wal_checkpoint(PASSIVE);" >/dev/null 2>&1

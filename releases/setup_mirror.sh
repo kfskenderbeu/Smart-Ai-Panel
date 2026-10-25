@@ -74,6 +74,12 @@ UNIT
   [ -f /root/.ssh/id_ed25519 ] || ssh-keygen -t ed25519 -N '' -f /root/.ssh/id_ed25519
   echo "  ssh-copy-id -p $SSH_PORT iptvpanel@$PEER "
   echo "  (and on the standby: mkdir -p $PANEL_DIR/data/mirror-in && chown iptvpanel: $PANEL_DIR/data/mirror-in)"
+  echo
+  echo "Then give the standby this server's config (same jwt_secret, or after a failover"
+  echo "it cannot decrypt the secret settings, DRM keys or sessions):"
+  echo "  scp -P $SSH_PORT $PANEL_DIR/config/config.json iptvpanel@$PEER:$PANEL_DIR/config/config.json"
+  echo "  ssh -p $SSH_PORT iptvpanel@$PEER chmod 600 $PANEL_DIR/config/config.json"
+  echo "journalctl -u iptv-mirror-sync shows 'standby jwt_secret matches' once it is right."
 
 else
   install -m 0755 "$SRC_DIR/iptv-failover-watch.sh" /usr/local/bin/iptv-failover-watch.sh

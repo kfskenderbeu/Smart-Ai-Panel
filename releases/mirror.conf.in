@@ -18,6 +18,10 @@ MIRROR_KEEP=6               # local snapshot rotation
 # Optional: a file listing extra paths (relative to panel dir, one per line)
 # to ship alongside the DB (e.g. web/ or certs).
 MIRROR_EXTRA_FILES=
+# The standby must share this server's jwt_secret (docs/HA.md). The sync
+# compares hashes of both every N loops and warns on a mismatch.
+MIRROR_SECRET_CHECK_EVERY=40
+MIRROR_CONFIG=config/config.json
 
 # ── failover-watch side (runs on the MIRROR) ───────────────────────────────
 # Health URL of the active main (no TLS on 8080 per house rule; 18099 metrics).
