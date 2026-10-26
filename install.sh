@@ -29,9 +29,9 @@
 set -euo pipefail
 
 # ── release this script installs (rewritten on every release) ──────────────
-VERSION_DEFAULT="2.6.56"
-SHA_PROD_DEFAULT="2797897e1692bf1a2e2db23bce4e1220f2730952cde27fb8a172d87bb38d8924"
-SHA_TRIAL_DEFAULT="3f3f32241f95426f255e1f336bd6cdad17278a4e287692fac13f7835e7a17e1a"
+VERSION_DEFAULT="2.6.57"
+SHA_PROD_DEFAULT="4c4ed891ba6e978bfd9f85d7527b2b88a14161720a9db2e0f010f575036cdd5f"
+SHA_TRIAL_DEFAULT="5fae2df54cd477327798e52f6ab267963dbe0bd1d8fa5315eb485faf697faf4c"
 # The YouTube-login helper is a separate Python service the panel proxies to
 # on loopback. It is pinned by checksum like the binary, but it is optional:
 # if it is missing the panel still runs and only that one page is unusable.
