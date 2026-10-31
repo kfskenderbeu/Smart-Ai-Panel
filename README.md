@@ -4,6 +4,11 @@ Download-only repository. It holds the compiled panel binaries and the signed
 update manifests that the panel reads to update itself. **No source code lives
 here.**
 
+## Contact & support
+
+Questions, licence requests, bug reports and news: join the Discord server
+**https://discord.gg/nPT3D4Sct**
+
 ## Downloads
 
 | Build | Who is it for | Direct link |
