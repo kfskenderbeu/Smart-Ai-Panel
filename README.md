@@ -6,8 +6,9 @@ here.**
 
 ## Contact & support
 
-Questions, licence requests, bug reports and news: join the Discord server
-**https://discord.gg/nPT3D4Sct**
+- Website and licence shop: **https://smartaiiptv.com**
+- Questions, licence requests, bug reports and news: Discord server
+  **https://discord.gg/nPT3D4Sct**
 
 ## Downloads
 
