@@ -2,7 +2,7 @@
 #
 # IPTV Panel — installer for a fresh server, straight from GitHub.
 #
-#   curl -fsSL https://raw.githubusercontent.com/kfskenderbeu/Smart-Ai-Panel/main/install.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/smart-ai-systems/Smart-Ai-Panel/main/install.sh | sudo bash
 #
 #   # trial build (no licence, runs until the baked-in end date)
 #   curl -fsSL .../install.sh | sudo bash -s -- --trial
@@ -29,15 +29,15 @@
 set -euo pipefail
 
 # ── release this script installs (rewritten on every release) ──────────────
-VERSION_DEFAULT="2.6.128"
-SHA_PROD_DEFAULT="79c5db7d4d042ffd11a01b9ba8fad24169c08b7290a23ce0f714f90fdaea6abb"
-SHA_TRIAL_DEFAULT="a59c96b96311173178f97f55b6e08dc944a1c2af3065b8aa21ce70b8be43441d"
+VERSION_DEFAULT="2.6.129"
+SHA_PROD_DEFAULT="37818b7ce76d5a78439c9662e3b58d30f9a472881215668ded9b2d2155a235cf"
+SHA_TRIAL_DEFAULT="9935ff429ede08f87f0fff0ae1396b6b7b375b30fe04358dbfeccafcd2bde6b3"
 # The YouTube-login helper is a separate Python service the panel proxies to
 # on loopback. It is pinned by checksum like the binary, but it is optional:
 # if it is missing the panel still runs and only that one page is unusable.
 SHA_HELPER_DEFAULT="0ff7f88e2c4a5870e816eb05d7a3aff59accf883e81cd0745d84547ad891f99d"
 
-REPO="kfskenderbeu/Smart-Ai-Panel"
+REPO="smart-ai-systems/Smart-Ai-Panel"
 RAW="https://raw.githubusercontent.com/${REPO}/main"
 
 # ── defaults ──────────────────────────────────────────────────────────────

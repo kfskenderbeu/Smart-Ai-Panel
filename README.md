@@ -30,7 +30,7 @@ you are assembling an installation offline.
 One command, straight from this repository:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kfskenderbeu/Smart-Ai-Panel/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/smart-ai-systems/Smart-Ai-Panel/main/install.sh | sudo bash
 ```
 
 It installs the dependencies (`curl`, `ca-certificates`, `ffmpeg`, `python3`,
@@ -45,14 +45,14 @@ licence is bound to it. Send the HWID to the vendor, then run it again with the
 key:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kfskenderbeu/Smart-Ai-Panel/main/install.sh \
+curl -fsSL https://raw.githubusercontent.com/smart-ai-systems/Smart-Ai-Panel/main/install.sh \
   | sudo bash -s -- --license '<KEY>'
 ```
 
 **Trial** (no licence, ends on its built-in date):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kfskenderbeu/Smart-Ai-Panel/main/install.sh \
+curl -fsSL https://raw.githubusercontent.com/smart-ai-systems/Smart-Ai-Panel/main/install.sh \
   | sudo bash -s -- --trial
 ```
 
@@ -70,7 +70,7 @@ The panel's own update mechanism installs the web UI, so an existing
 installation only needs the binary:
 
 ```bash
-iptv-panel --update-apply https://raw.githubusercontent.com/kfskenderbeu/Smart-Ai-Panel/main/updates.json
+iptv-panel --update-apply https://raw.githubusercontent.com/smart-ai-systems/Smart-Ai-Panel/main/updates.json
 ```
 
 For a **fresh** installation, unpack the web UI next to the panel as well:
@@ -94,8 +94,8 @@ install -m 0755 iptv-panel-trial /opt/iptv-panel/bin/iptv-panel-trial
 
 | Track | Manifest URL |
 |---|---|
-| Production | `https://raw.githubusercontent.com/kfskenderbeu/Smart-Ai-Panel/main/updates.json` |
-| Trial | `https://raw.githubusercontent.com/kfskenderbeu/Smart-Ai-Panel/main/updates-trial.json` |
+| Production | `https://raw.githubusercontent.com/smart-ai-systems/Smart-Ai-Panel/main/updates.json` |
+| Trial | `https://raw.githubusercontent.com/smart-ai-systems/Smart-Ai-Panel/main/updates-trial.json` |
 
 Then open *Settings → License → ⬆️ Software Updates* and press
 **Check for updates** → **Update now**. The panel restarts itself on the new
